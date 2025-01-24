@@ -1,46 +1,57 @@
 import requests
+from twilio.rest import Client
 
-STOCK = "TSLA"
-COMPANY_NAME = "Tesla Inc"
-
+STOCK = "AAPL"
+COMPANY_NAME = "Apple"
 STOCK_ENDPOINT = "https://www.alphavantage.co/query"
+STOCK_API_KEY = "QS2UJG0E1MVNRI87"
 NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
+NEWS_API_KEY = "ca34d4e6c04548acbbcd901de7d725fa"
+TWILIO_SID = 'ACed14ae15072c49c76eeab625db8144fb'
+TWILIO_AUTH_TOKEN = "adab9f463bb92ff14c0ab8b4cdd35804"
 
-API_KEY = "QS2UJG0E1MVNRI87"
-
-## STEP 1: Use https://newsapi.org/docs/endpoints/everything
-# When STOCK price increase/decreases by 5% between yesterday and the day before yesterday then print("Get News").
-#HINT 1: Get the closing price for yesterday and the day before yesterday. Find the positive difference between the two prices. e.g. 40 - 20 = -20, but the positive difference is 20.
-#HINT 2: Work out the value of 5% of yesterday's closing stock price.
-parameters = {
+stock_param = {
     "function": "TIME_SERIES_DAILY",
     "symbol": STOCK,
-    "apikey": API_KEY,
+    "apikey": STOCK_API_KEY,
 }
-r = requests.get(STOCK_ENDPOINT, params=parameters)
-print(r.json())
+stock_request = requests.get(STOCK_ENDPOINT, params=stock_param)
+stock_request.raise_for_status()
+### WARNING - Stock API can only request 25 times daily! ###
+stock_data = stock_request.json()
+dates = list(stock_data["Time Series (Daily)"].keys())
+yesterday = stock_data[dates[0]]
+day_before_yesterday = stock_data[dates[1]]
+yesterday_close = float(yesterday["4. close"])
+day_before_close = float(day_before_yesterday["4. close"])
+price_change = float(format(yesterday_close - day_before_close, ".2f"))
+percentage_change = float(format(price_change / yesterday_close * 100, ".2f"))
+
+# If percentage change > 5%, send a Whatsapp message
+if abs(percentage_change) > 5:
+    news_param = {
+        "q": (STOCK, COMPANY_NAME),
+        "apikey": NEWS_API_KEY,
+        # "pageSize": 100,
+    }
+    news_request = requests.get(NEWS_ENDPOINT, params=news_param)
+    news_json_data = news_request.json()
+    top_articles = news_json_data["articles"][0:3]
+    headline = [article["title"] for article in top_articles]
+    brief = [article["content"] for article in top_articles]
+
+    if percentage_change > 0:
+        message_body = f"{STOCK} 🔺+{percentage_change}%"
+    else:
+        message_body = f"{STOCK} 🔻{percentage_change}%"
 
 
-## STEP 2: Use https://newsapi.org/docs/endpoints/everything
-# Instead of printing ("Get News"), actually fetch the first 3 articles for the COMPANY_NAME.
-#HINT 1: Think about using the Python Slice Operator
-
-
-
-## STEP 3: Use twilio.com/docs/sms/quickstart/python
-# Send a separate message with each article's title and description to your phone number.
-#HINT 1: Consider using a List Comprehension.
-
-
-
-#Optional: Format the SMS message like this:
-"""
-TSLA: 🔺2%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-or
-"TSLA: 🔻5%
-Headline: Were Hedge Funds Right About Piling Into Tesla Inc. (TSLA)?. 
-Brief: We at Insider Monkey have gone over 821 13F filings that hedge funds and prominent investors are required to file by the SEC The 13F filings show the funds' and investors' portfolio positions as of March 31st, near the height of the coronavirus market crash.
-"""
-
+    client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
+    message = [client.messages.create(
+        from_='whatsapp:+14155238886',
+        to='whatsapp:+19178853233',
+        body=f"{message_body}"
+             f"{article["title"]}"
+             f"{article["content"]}"
+    )
+    for article in top_articles]
