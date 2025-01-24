@@ -19,8 +19,8 @@ stock_param = {
 stock_request = requests.get(STOCK_ENDPOINT, params=stock_param)
 stock_request.raise_for_status()
 ### WARNING - Stock API can only request 25 times daily! ###
-stock_data = stock_request.json()
-dates = list(stock_data["Time Series (Daily)"].keys())
+stock_data = stock_request.json()["Time Series (Daily)"]
+dates = list(stock_data.keys())
 yesterday = stock_data[dates[0]]
 day_before_yesterday = stock_data[dates[1]]
 yesterday_close = float(yesterday["4. close"])
@@ -29,7 +29,7 @@ price_change = float(format(yesterday_close - day_before_close, ".2f"))
 percentage_change = float(format(price_change / yesterday_close * 100, ".2f"))
 
 # If percentage change > 5%, send a Whatsapp message
-if abs(percentage_change) > 5:
+if abs(percentage_change) > 0.05:
     news_param = {
         "q": (STOCK, COMPANY_NAME),
         "apikey": NEWS_API_KEY,
@@ -46,13 +46,12 @@ if abs(percentage_change) > 5:
     else:
         message_body = f"{STOCK} 🔻{percentage_change}%"
 
-
     client = Client(TWILIO_SID, TWILIO_AUTH_TOKEN)
     message = [client.messages.create(
         from_='whatsapp:+14155238886',
         to='whatsapp:+19178853233',
-        body=f"{message_body}"
-             f"{article["title"]}"
+        body=f"{message_body}\n"
+             f"{article["title"]}\n"
              f"{article["content"]}"
-    )
-    for article in top_articles]
+    ) for article in top_articles
+    ]
