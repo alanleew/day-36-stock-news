@@ -4,7 +4,8 @@ from twilio.rest import Client
 STOCK = "AAPL"
 COMPANY_NAME = "Apple"
 STOCK_ENDPOINT = "https://www.alphavantage.co/query"
-STOCK_API_KEY = "QS2UJG0E1MVNRI87"
+# STOCK_API_KEY = "QS2UJG0E1MVNRI87"
+STOCK_API_KEY = "X41VAJSI09XRYUK8" # Second account created using alanleew412+test@gmail.com
 NEWS_ENDPOINT = "https://newsapi.org/v2/everything"
 NEWS_API_KEY = "ca34d4e6c04548acbbcd901de7d725fa"
 TWILIO_SID = 'ACed14ae15072c49c76eeab625db8144fb'
